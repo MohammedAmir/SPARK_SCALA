@@ -1,0 +1,85 @@
+CREATE EXTERNAL TABLE Dinesafe 
+(
+   ROW_ID STRING,
+   ESTABLISHMENT_ID STRING,
+   INSPECTION_ID STRING,
+   ESTABLISHMENT_NAME STRING,
+   REVIEW DOUBLE,
+   VALUE DOUBLE,
+   CUISINE_TYPE STRING,
+   ESTABLISHMENT_TYPE STRING, 
+   ESTABLISHMENT_STATUS STRING,
+   MINIMUM_INSPECTIONS_PERYEAR INT,
+   INSPECTION_DATE STRING,
+   SEVERITY STRING,
+   ACTION STRING,
+   SHORT_ADDRESS STRING, 
+   DISTRICT STRING,
+   CITY STRING,
+   POSTAL_CODE STRING
+)
+ROW FORMAT DELIMITED
+  FIELDS TERMINATED BY '\t'
+  LINES TERMINATED BY '\n'
+  stored as textfile
+  LOCATION '/user/lab/Capstone/Dinesafe/'
+  tblproperties ("skip.header.line.count"="1");
+
+
+
+
+CREATE EXTERNAL TABLE Profile
+(
+User_ID	 STRING,
+African	 int, 
+Bakeries  int, 	
+Bar	  int, 
+Cafe	  int, 
+Caribbean  int, 	 
+Deli	  int, 
+Dessert	 int, 
+European  int, 	
+Far_Eastern	 int, 
+Pastries	 int, 
+South_Asian	 int, 
+South_East_Asian	 int, 
+Latin_American	 int, 
+Mediterranean	 int, 
+Middle_Eastern	 int, 
+North_American int, 
+Juicery int
+)
+ROW FORMAT DELIMITED
+  FIELDS TERMINATED BY '\t'
+  LINES TERMINATED BY '\n'
+  stored as textfile
+  LOCATION '/user/lab/Capstone/Profile/'
+------------------
+
+CREATE EXTERNAL TABLE Profile
+(
+User_ID	 STRING
+African	 STRING, 
+Bakeries  STRING, 	
+Bar	  STRING, 
+Cafe	  STRING, 
+Caribbean  STRING, 	 
+Deli	  STRING, 
+Dessert	 STRING, 
+European  STRING, 	
+Far_Eastern	 STRING, 
+Pastries	 STRING, 
+South_Asian	 STRING, 
+South_East_Asian	 STRING, 
+Latin_American	 STRING, 
+Mediterranean	 STRING, 
+Middle_Eastern	 STRING, 
+North_American STRING, 
+Juicery STRING
+)
+ROW FORMAT DELIMITED
+  FIELDS TERMINATED BY '\t'
+  LINES TERMINATED BY '\n'
+  stored as textfile
+  LOCATION '/user/lab/Capstone/Profile/'
+  tblproperties ("skip.header.line.count"="1");

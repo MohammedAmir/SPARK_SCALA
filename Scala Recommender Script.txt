@@ -1,0 +1,211 @@
+//--- Step 0 - Create tabel in hive and load it with data
+CREATE EXTERNAL TABLE Dinesafe 
+(
+   ROW_ID STRING,
+   ESTABLISHMENT_ID STRING,
+   INSPECTION_ID STRING,
+   ESTABLISHMENT_NAME STRING,
+   REVIEW DOUBLE,
+   VALUE DOUBLE,
+   CUISINE_TYPE STRING,
+   ESTABLISHMENT_TYPE STRING, 
+   ESTABLISHMENT_STATUS STRING,
+   MINIMUM_INSPECTIONS_PERYEAR INT,
+   INSPECTION_DATE STRING,
+   SEVERITY STRING,
+   ACTION STRING,
+   SHORT_ADDRESS STRING, 
+   DISTRICT STRING,
+   CITY STRING,
+   POSTAL_CODE STRING
+)
+ROW FORMAT DELIMITED
+  FIELDS TERMINATED BY '\t'
+  LINES TERMINATED BY '\n'
+  stored as textfile
+  LOCATION '/user/lab/Capstone/Dinesafe/'
+  tblproperties ("skip.header.line.count"="1");
+
+
+
+
+CREATE EXTERNAL TABLE Profile
+(
+User_ID	 STRING,
+African	 int, 
+Bakeries  int, 	
+Bar	  int, 
+Cafe	  int, 
+Caribbean  int, 	 
+Deli	  int, 
+Dessert	 int, 
+European  int, 	
+Far_Eastern	 int, 
+Pastries	 int, 
+South_Asian	 int, 
+South_East_Asian	 int, 
+Latin_American	 int, 
+Mediterranean	 int, 
+Middle_Eastern	 int, 
+North_American int, 
+Juicery int
+)
+ROW FORMAT DELIMITED
+  FIELDS TERMINATED BY '\t'
+  LINES TERMINATED BY '\n'
+  stored as textfile
+  LOCATION '/user/lab/Capstone/Profile/'
+
+//--- Step 1 - Import Packages
+import org.apache.log4j.Logger
+import org.apache.log4j.Level
+Logger.getLogger("org").setLevel(Level.OFF)
+Logger.getLogger("akka").setLevel(Level.OFF)
+
+import org.apache.spark.sql._
+import org.apache.spark.sql.types._
+import org.apache.spark.sql.functions._
+
+import org.apache.spark.rdd._
+import org.apache.spark.SparkConf
+import org.apache.spark.SparkContext
+import org.apache.spark.SparkContext._
+
+import sqlContext.implicits._
+import java.util.Random
+import scala.io.Source
+
+// feature transformation
+import org.apache.spark.ml.feature._
+import org.apache.spark.ml.classification._
+import org.apache.spark.ml.evaluation._
+import org.apache.spark.ml.feature.StringIndexer
+
+// ALS 
+import org.apache.spark.ml.recommendation.ALS
+import org.apache.spark.mllib.recommendation.MatrixFactorizationModel
+import org.apache.spark.mllib.recommendation.Rating
+
+//--- Step 2 - Runs HiveQL command & load the data
+sqlContext.sql("use dinesafe");
+
+// Creates a DataFrame pointing to the specified Hive table 
+val dinesafe = sqlContext.table("Dinesafe")
+val profile = sqlContext.table("Profile").show(10)
+
+//dinesafe.printSchema()
+//profile.printSchema()
+
+//---- Step 3 -  transform Cuisine Type from string to numeric index
+val dinesafe_ind = new StringIndexer().setInputCol("cuisine_type").setOutputCol("cuisine_type_ind").fit(dinesafe)
+val dinesafe_ind_trans = dinesafe_ind.transform(dinesafe)
+
+//list distinct values
+//var distinct_df = dinesafe_ind_trans.select($"cuisine_type",$"cuisine_type_ind").distinct
+//distinct_df.show()
+
+//---- Step 3 - Separate Cuisine Type Index into separate columns with binary value
+// 0 - Cafe
+val isCafe = udf( (cuisine_type_ind: Double) => { if (cuisine_type_ind == 0) 1 else 0})
+
+// 1 - North American
+val isNorth_American = udf( (cuisine_type_ind: Double) => { if (cuisine_type_ind == 1) 1  else 0})
+
+// 2 - Deli
+val isDeli = udf( (cuisine_type_ind: Double) => { if (cuisine_type_ind == 2) 1 else 0})
+
+// 3 - European
+val isEuropean = udf( (cuisine_type_ind: Double) => {if (cuisine_type_ind == 3) 1 else 0})
+
+// 4 - Far Eastern
+val isFar_Eastern = udf( (cuisine_type_ind: Double) => { if (cuisine_type_ind == 4) 1 else 0 })
+
+// 5 - Mediterranean
+val isMediterranean = udf( (cuisine_type_ind: Double) => { if (cuisine_type_ind == 5) 1 else 0 })
+
+// 6 - South East Asian
+val isSE_Asian = udf( (cuisine_type_ind: Double) => { if (cuisine_type_ind == 6) 1 else 0})
+
+// 7 - Bar
+val isBar = udf( (cuisine_type_ind: Double) => { if (cuisine_type_ind == 7) 1 else 0})
+
+// 8 - Juicery 
+val isJuicery = udf( (cuisine_type_ind: Double) => { if (cuisine_type_ind == 8) 1 else 0})
+
+// 9 - South Asian
+val isSAsian = udf( (cuisine_type_ind: Double) => { if (cuisine_type_ind == 9) 1 else 0 })
+
+// 10 - Caribbean
+val isCaribbean = udf( (cuisine_type_ind: Double) => { if (cuisine_type_ind == 10) 1 else 0 })
+
+// 11 - Pastries
+val isPastries = udf( (cuisine_type_ind: Double) => { if (cuisine_type_ind == 11) 1 else 0 })
+
+// 12 - Latin American 
+val isLatin_American = udf( (cuisine_type_ind: Double) => { if (cuisine_type_ind == 12) 1 else 0})
+
+// 13 - Dessert
+val isDessert = udf( (cuisine_type_ind: Double) => { if (cuisine_type_ind == 13) 1 else 0 })
+
+// 14 - Middle Eastern
+val isMiddle_Eastern = udf( (cuisine_type_ind: Double) => { if (cuisine_type_ind == 14) 1 else 0})
+  
+// 15 - African
+val isAfrican = udf( (cuisine_type_ind: Double) => {if (cuisine_type_ind == 15) 1 else 0})
+
+// 16 - Bakeries 
+val isBakeries = udf( (cuisine_type_ind: Double) => {if (cuisine_type_ind == 16) 1 else 0})
+
+//---- Step 4 -  Create indexed data frame Labels
+val df2 = dinesafe_ind_trans.withColumn("African", isAfrican($"cuisine_type_ind"))
+                 .withColumn("Bar", isBar($"cuisine_type_ind"))
+                 .withColumn("Cafe", isCafe($"cuisine_type_ind"))
+                 .withColumn("Caribbean", isCaribbean($"cuisine_type_ind"))
+                 .withColumn("Deli", isDeli($"cuisine_type_ind"))
+                 .withColumn("Dessert", isDessert($"cuisine_type_ind"))
+                 .withColumn("European", isEuropean($"cuisine_type_ind"))
+                 .withColumn("Far_Eastern", isFar_Eastern($"cuisine_type_ind"))
+                 .withColumn("Pastries", isPastries($"cuisine_type_ind"))
+                 .withColumn("South_Asian", isSAsian($"cuisine_type_ind"))
+                 .withColumn("South_East_Asian", isSE_Asian($"cuisine_type_ind"))
+                 .withColumn("Latin_American", isLatin_American($"cuisine_type_ind"))
+                 .withColumn("Mediterranean", isMediterranean($"cuisine_type_ind"))
+                 .withColumn("Middle_Eastern", isMiddle_Eastern($"cuisine_type_ind"))
+                 .withColumn("North_American", isNorth_American($"cuisine_type_ind"))
+                 .withColumn("Juicery", isJuicery($"cuisine_type_ind"))
+
+df2.printSchema
+
+//---- Step 5 -  Create a featureval df3 = df2.select ($"establishment_id".cast(IntegerType).alias("establishment_id"),$"review",$"value",$"African",$"Bar",$"Cafe",$"Caribbean",$"Deli",$"Dessert",$"European",$"Far_Eastern",$"Pastries",$"South_Asian",$"South_East_Asian",$"Latin_American", $"Mediterranean",$"Middle_Eastern",$"North_American",$"Juicery")
+df3.printSchema()
+df3.show()
+
+//---- Step 6 -  Split data to 80/20
+val Array(training, testing) = df3.randomSplit(Array(0.8,0.2))
+val training_data = training.count
+val testing_data = testing.count
+val training_data_ratio = training.count/df2.count().toDouble
+val testing_data_ratio = testing.count/df2.count().toDouble
+training.show()
+testing.show()
+
+//---- Step 7 -  Build a model
+val model = new ALS().setImplicitPrefs(true)
+            .setRank(10)
+            .setRegParam(0.01)
+            .setAlpha(1.0)
+            .setMaxIter(5)
+            .setUserCol("establishment_id")
+            .setItemCol("review")
+            .setRatingCol("value")
+            .setPredictionCol("prediction")
+            .fit(training) 
+
+//---- Step 8 -  predictions
+val predictions = model.transform(testing).na.drop()
+predictions.show(10)
+
+//---- Step 9 - Evaluate the model by computing the RMSE on the test data
+val evaluator = new RegressionEvaluator().setMetricName("rmse").setLabelCol("rating").setPredictionCol("prediction")
+val rmse = evaluator.evaluate(predictions)
+println("Root-mean-square error = " + rmse)
